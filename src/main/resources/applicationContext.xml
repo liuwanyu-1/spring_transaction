@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/aop
+       https://www.springframework.org/schema/aop/spring-aop.xsd
+       http://www.springframework.org/schema/tx
+       https://www.springframework.org/schema/tx/spring-tx.xsd">
+
+<!--    spring创建dataSource 实例-->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="com.mysql.cj.jdbc.Driver"/>
+        <property name="url"
+                  value="jdbc:mysql://localhost:3306/design?serverTimezone=Asia/Shanghai"/>
+        <property name="username" value="root"/>
+        <property name="password" value="123456"/>
+    </bean>
+
+<!--    sqlSessionFactory-->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="typeAliasesPackage" value="lwy.study.spring.vo"/>
+    </bean>
+
+<!--    扫描mapper.xml文件, 利用sqlSessionFactory创建mapper接口的实例-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+<!--        mapper接口包位置-->
+        <property name="basePackage" value="lwy.study.spring.mapper"/>
+    </bean>
+
+    <context:component-scan base-package="lwy.study.spring.service.impl,lwy.study.spring.aop"/>
+
+<!--    注意aop(代理类型), false: jdk代理, true: cglib-->
+    <aop:aspectj-autoproxy proxy-target-class="false"/>
+
+<!--    spring-jdbc 包, 管理事务内容的对象-->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+<!--    对某些事务 (service层的方法) 进行管理-->
+    <tx:advice transaction-manager="txManager" id="txAdvice">
+        <tx:attributes>
+<!--            有默认的事务传播方式和隔离级别, 使用通配符-->
+            <tx:method name="trans*" propagation="REQUIRED" isolation="DEFAULT"/>
+            <tx:method name="add*" propagation="REQUIRED" isolation="DEFAULT"/>
+            <tx:method name="modi*"/>
+            <tx:method name="remo*"/>
+        </tx:attributes>
+    </tx:advice>
+
+<!--    事务 的方法在哪里找到-->
+    <aop:config>
+        <aop:pointcut id="txPointcut" expression="execution( * lwy.study.spring.service.impl.AccountServiceImpl.transfer(..))"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut"/>
+    </aop:config>
+
+</beans>
